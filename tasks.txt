@@ -1,0 +1,24 @@
+game andrea
+	integrate sensor feedback
+	document how it works
+	calibrate game colors such that it does not effect global luminosity and eye 
+	change speed
+	block changes
+
+eye tracker julius
+	document how it works 
+	calibration to some base level
+	get speed of eyes 
+	get pupil dilation
+
+GSR tracker anders
+	document how it works 
+	get skin conductivity
+	calibration of eye dilation 
+	
+Classification christian
+	fusion of the signals (early fusion)
+	a couple of simple classifiers
+
+
+	
