@@ -21,11 +21,12 @@
 from random import randrange as rand
 import pygame, sys
 
+
 # The configuration
 config = {
 	'cell_size':	20,
 	'cols':		20,
-	'rows':		50,
+	'rows':		30,
 	'delay':	750,
 	'maxfps':	30
 }
@@ -42,6 +43,8 @@ colors = [
 ]
 
 # Define the shapes of the single parts
+
+
 tetris_shapes = [
 	[[1, 1, 1],
 	 [0, 1, 0]],
@@ -61,8 +64,31 @@ tetris_shapes = [
 	[[6, 6, 6, 6]],
 	
 	[[7, 7],
-	 [7, 7]]
+	 [7, 7]],
+
+
 ]
+
+advanced_shapes = [
+	[[1, 0, 1],
+	 [1, 1, 1]],
+
+	[[2, 0, 2],
+	 [0, 2, 0],
+	 [2, 0, 2]],
+
+	[[3, 3, 3, 3],
+	 [0, 0, 3, 3],
+	 [0, 0, 0, 3]],
+
+	[[4, 4, 4, 4, 4],
+	 [0, 0, 4, 0, 0],
+	 [0, 0, 4, 0, 0],
+	 [0, 0, 4, 0, 0]]
+
+
+]
+
 
 def rotate_clockwise(shape):
 	return [ [ shape[y][x]
@@ -112,7 +138,7 @@ class TetrisApp(object):
 		self.init_game()
 	
 	def new_stone(self):
-		self.stone = tetris_shapes[rand(len(tetris_shapes))]
+		self.stone = advanced_shapes[rand(len(advanced_shapes))]
 		self.stone_x = int(config['cols'] / 2 - len(self.stone[0])/2)
 		self.stone_y = 0
 		
