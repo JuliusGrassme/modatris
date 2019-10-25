@@ -20,6 +20,7 @@ Classification christian
 	fusion of the signals (early fusion)
 	a couple of simple classifiers
 	extra
+	extra
 	
 
 
