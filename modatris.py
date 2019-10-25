@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-#-*- coding: utf-8 -*-
-
-# Very simple tetris implementation
-# 
 # Control keys:
 # Down - Drop stone faster
 # Left/Right - Move stone
@@ -10,36 +5,28 @@
 # Escape - Quit game
 # P - Pause game
 #
-# Have fun!
+# TO DO:
+#
+# 1. Get higher resolution screen
+# 2. Create various blocks
+# 3. Research on color intensities
+# 4. Apply new colors to blocks
+# 5. Establish a scoring system
+# 6. Find out how to integrade sensor feedback
+# 7. Document code
+# 
 
-# Copyright (c) 2010 "Kevin Chabowski"<kevin@kch42.de>
-# 
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-# 
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
+
 
 from random import randrange as rand
 import pygame, sys
 
+
 # The configuration
 config = {
 	'cell_size':	20,
-	'cols':		8,
-	'rows':		16,
+	'cols':		20,
+	'rows':		30,
 	'delay':	750,
 	'maxfps':	30
 }
@@ -56,6 +43,8 @@ colors = [
 ]
 
 # Define the shapes of the single parts
+
+
 tetris_shapes = [
 	[[1, 1, 1],
 	 [0, 1, 0]],
@@ -75,13 +64,36 @@ tetris_shapes = [
 	[[6, 6, 6, 6]],
 	
 	[[7, 7],
-	 [7, 7]]
+	 [7, 7]],
+
+
 ]
+
+advanced_shapes = [
+	[[1, 0, 1],
+	 [1, 1, 1]],
+
+	[[2, 0, 2],
+	 [0, 2, 0],
+	 [2, 0, 2]],
+
+	[[3, 3, 3, 3],
+	 [0, 0, 3, 3],
+	 [0, 0, 0, 3]],
+
+	[[4, 4, 4, 4, 4],
+	 [0, 0, 4, 0, 0],
+	 [0, 0, 4, 0, 0],
+	 [0, 0, 4, 0, 0]]
+
+
+]
+
 
 def rotate_clockwise(shape):
 	return [ [ shape[y][x]
-			for y in xrange(len(shape)) ]
-		for x in xrange(len(shape[0]) - 1, -1, -1) ]
+			for y in range(len(shape)) ]
+		for x in range(len(shape[0]) - 1, -1, -1) ]
 
 def check_collision(board, shape, offset):
 	off_x, off_y = offset
@@ -96,7 +108,7 @@ def check_collision(board, shape, offset):
 
 def remove_row(board, row):
 	del board[row]
-	return [[0 for i in xrange(config['cols'])]] + board
+	return [[0 for i in range(config['cols'])]] + board
 	
 def join_matrixes(mat1, mat2, mat2_off):
 	off_x, off_y = mat2_off
@@ -106,9 +118,9 @@ def join_matrixes(mat1, mat2, mat2_off):
 	return mat1
 
 def new_board():
-	board = [ [ 0 for x in xrange(config['cols']) ]
-			for y in xrange(config['rows']) ]
-	board += [[ 1 for x in xrange(config['cols'])]]
+	board = [ [ 0 for x in range(config['cols']) ]
+			for y in range(config['rows']) ]
+	board += [[ 1 for x in range(config['cols'])]]
 	return board
 
 class TetrisApp(object):
@@ -126,7 +138,7 @@ class TetrisApp(object):
 		self.init_game()
 	
 	def new_stone(self):
-		self.stone = tetris_shapes[rand(len(tetris_shapes))]
+		self.stone = advanced_shapes[rand(len(advanced_shapes))]
 		self.stone_x = int(config['cols'] / 2 - len(self.stone[0])/2)
 		self.stone_y = 0
 		
