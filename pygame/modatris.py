@@ -7,8 +7,13 @@
 #
 # TO DO:
 #
+<<<<<<< HEAD:modatris.py
 # 1. Get higher resolution screen (done)
 # 2. Create various blocks (done)
+=======
+# 1. Get higher resolution screen
+# 2. Create various blocks
+>>>>>>> master:pygame/modatris.py
 # 3. Research on color intensities
 # 4. Apply new colors to blocks
 # 5. Establish a scoring system
@@ -45,7 +50,11 @@ colors = [
 # Define the shapes of the single parts
 
 
+<<<<<<< HEAD:modatris.py
 easy_shapes = [
+=======
+tetris_shapes = [
+>>>>>>> master:pygame/modatris.py
 	[[1, 1, 1],
 	 [0, 1, 0]],
 	
@@ -69,8 +78,11 @@ easy_shapes = [
 
 ]
 
+<<<<<<< HEAD:modatris.py
 # Define shapes for advanced mode
 
+=======
+>>>>>>> master:pygame/modatris.py
 advanced_shapes = [
 	[[1, 0, 1],
 	 [1, 1, 1]],
@@ -89,6 +101,7 @@ advanced_shapes = [
 	 [0, 0, 4, 0, 0]]
 
 
+<<<<<<< HEAD:modatris.py
 ]
 
 
@@ -113,7 +126,10 @@ medium_shapes = [
 	[[6, 6, 0],
 	 [0, 6, 6]]
 
+=======
+>>>>>>> master:pygame/modatris.py
 ]
+
 
 def rotate_clockwise(shape):
 	return [ [ shape[y][x]
@@ -163,7 +179,11 @@ class TetrisApp(object):
 		self.init_game()
 	
 	def new_stone(self):
+<<<<<<< HEAD:modatris.py
 		self.stone = medium_shapes[rand(len(medium_shapes))]
+=======
+		self.stone = advanced_shapes[rand(len(advanced_shapes))]
+>>>>>>> master:pygame/modatris.py
 		self.stone_x = int(config['cols'] / 2 - len(self.stone[0])/2)
 		self.stone_y = 0
 		
