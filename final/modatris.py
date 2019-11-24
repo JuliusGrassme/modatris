@@ -1,3 +1,331 @@
+#--------------------------------------------------------------- gsr tracker ------------------------------------------------------------------------------------
+
+
+import threading
+
+import sys, struct, serial
+
+import math
+import numpy as np
+
+
+import matplotlib.pyplot as plt
+from scipy.ndimage.filters import uniform_filter1d
+
+from numpy  import array
+
+
+
+
+
+
+def wait_for_ack():
+	ddata = ""
+	ack = struct.pack('B', 0xff)
+	while ddata != ack:
+		ddata = ser.read(1)
+		#print( "0x%02x" % ord(ddata[0])  )
+	  
+	return
+
+
+ser = serial.Serial('Com6', 115200)
+ser.flushInput()
+print( "port opening, done." )
+
+# send the set sensors command
+ser.write(struct.pack('BBBB', 0x08 , 0x04, 0x01, 0x00))  #GSR and PPG
+
+wait_for_ack()	
+print( "sensor setting, done." )
+
+# Enable the internal expansion board power
+ser.write(struct.pack('BB', 0x5E, 0x01))
+wait_for_ack()
+print( "enable internal expansion board power, done." )
+
+# send the set sampling rate command
+#sampling_freq = 32768 / clock_wait = X Hz
+sampling_freq = 50
+clock_wait = (2 << 14) / sampling_freq
+
+
+
+qqq = struct.pack('<BH', 0x05, int ( clock_wait) )
+
+ser.write(qqq)
+
+
+ser.write(struct.pack( 'B' , 0x20) )
+
+wait_for_ack()
+
+# send start streaming command
+ser.write(struct.pack('B', 0x07))
+wait_for_ack()
+print( "start command sending, done." )
+
+# read incoming data
+
+
+
+
+
+
+ddata = bytearray()
+
+def thread_gsr_function():
+	print("start gsr")
+	
+	nnn=5001-1
+	nnnn = nnn+1
+	
+	num_array =  [0] * nnn
+	num_array2 =  [0] * nnn
+	#print(num_array)
+	numrange = range(0,nnn)
+	numrange2 = range(0,nnn)
+
+	num_to_add = 0
+	
+	global my_var2
+	global ddata
+	
+	while True:
+		numbytes = 0
+		framesize = 8 # 1byte packet type + 3byte timestamp + 2 byte GSR + 2 byte PPG(Int A13)
+		#print( "Packet Type\tTimestamp\tGSR\tPPG" )
+	
+		while numbytes < framesize:
+			ddata += ser.read(framesize)
+			numbytes = len(ddata)
+			
+		
+		data = ddata[0:framesize]
+		ddata = ddata[framesize:]
+		numbytes = len(ddata)
+
+		# read basic packet information
+		(packettype) = struct.unpack('B', data[0:1])
+		(timestamp0, timestamp1, timestamp2) = struct.unpack('BBB', data[1:4])
+
+		# read packet payload
+		(PPG_raw, GSR_raw) = struct.unpack('HH', data[4:framesize])
+
+		# get current GSR range resistor value
+		Range = ((GSR_raw >> 14) & 0xff)  # upper two bits
+		if(Range == 0):
+			Rf = 40.2	# kohm
+		elif(Range == 1):
+			Rf = 287.0  # kohm
+		elif(Range == 2):
+			Rf = 1000.0 # kohm
+		elif(Range == 3):
+			Rf = 3300.0 # kohm
+
+		# convert GSR to kohm value
+		gsr_to_volts = (GSR_raw & 0x3fff) * (3.0/4095.0)
+		GSR_ohm = Rf/( (gsr_to_volts /0.5) - 1.0)
+
+		# convert PPG to milliVolt value
+		PPG_mv = PPG_raw * (3000.0/4095.0)
+
+		timestamp = timestamp0 + timestamp1*256 + timestamp2*65536
+
+		num_array.pop(0)
+		num_array2.pop(0)
+		
+		#print("O: ", GSR_ohm)
+		#print("L: ", num_array[ len(num_array)-2 ])
+		
+		xxx =  GSR_ohm  
+		yyy =   num_array[ len(num_array)-2 ]
+		
+		num_array2.insert(len(num_array2), GSR_ohm)
+		
+		if abs ( xxx - yyy )  > 500 :
+			#print("big")
+			#GSR_ohm = num_array[ len(num_array)-2 ]
+			num_array.insert(len(num_array), GSR_ohm)
+		else:
+			num_array.insert(len(num_array), GSR_ohm)
+		
+		N = 5000
+		anp = array( num_array )
+		moving_ave = uniform_filter1d(anp, size=N)
+		#moving_ave_v = moving_ave / np.sqrt(np.sum(moving_ave**2))
+		
+		#print(np.mean(moving_ave), "  :  " ,moving_ave[len(num_array)-1])
+	
+	
+	
+	
+		
+		my_var2[0] = np.mean(moving_ave)
+		my_var2[1] = moving_ave[len(num_array)-1]
+		my_var2[2] = 0
+
+
+
+
+
+
+my_var2 = [1, 2, 3]
+thread_gsr_tracker = threading.Thread(target=thread_gsr_function, args=(), daemon=True) # 
+
+thread_gsr_tracker.start()
+
+
+
+
+
+
+
+
+
+#------------------------------------------------------ eye tracker start --------------------------------------------------------------------------
+
+
+#imports for the eye tracker 
+import tobii_research as tr
+from pygaze.display import Display
+from pygaze.eyetracker import EyeTracker
+from pygaze import settings; settings.TRACKERSERIALNUMBER = 'X230C-030127221071'
+from pygaze import settings; settings.FULLSCREEN = False
+from pygaze import settings; settings.DISPSIZE = (1920,1080)
+#from pygaze import settings; settings.DISPTYPE = 'pygame' # this did not work in my case but it might be easier for the pygame application
+#from pygaze import settings; settings.DISPTYPE = 'pygame'
+
+import numpy as np
+import pandas as pd
+
+import logging
+
+import time
+
+
+def calibrateEyeTrackerPyGaze():
+    """
+        Runs the callibration process using PyGaze and tobii eye trackers.
+    """
+
+    disp = Display()
+    tracker = EyeTracker(disp,resolution=(1920,1080),  trackertype='tobii')
+    
+    tracker.calibrate()
+    
+    #tracker.close() 
+    disp.close()
+    return tracker
+
+def avaliableEyeTrackers():
+    """
+        Checks for the available eye trackers connected using tobii SDK
+    """
+    # <BeginExample>
+    eyetrackers = tr.find_all_eyetrackers()
+
+    for eyetracker in eyetrackers:
+        print("Address: " + eyetracker.address)
+        print("Model: " + eyetracker.model)
+        print("Name (It's OK if this is empty): " + eyetracker.device_name)
+        print("Serial number: " + eyetracker.serial_number)
+        #TRACKERSERIALNUMBER = eyetracker.serial_number
+    # <EndExample>
+    return eyetrackers
+	
+def shift1(arr,num = 1):
+    """
+    Shifts the array by 1 converting array to panda, shifting and converting to list. 
+    """
+    data = pd.Series(arr)
+    data = data.shift(num)
+    return data.tolist()
+
+def updateRollingArray(arr,new_value):
+    """
+    Shifts the array and puts the new value in the first index's place
+    """
+    shifted_arr = shift1(arr)
+    shifted_arr[0] = new_value
+    return shifted_arr
+
+
+#print(avaliableEyeTrackers())
+
+eyetracker = calibrateEyeTrackerPyGaze()
+eyetracker.start_recording()    
+gaze_array = range(1,30)
+current_tracker_sample = eyetracker.sample()
+
+
+#current_gaze_mean = np.mean(gaze_array,axis=0)
+#eyetracker.stop_recording()
+#eyetracker.close()
+
+
+def thread_tracker_function():
+	
+	#global current_tracker_sample
+	global my_var
+
+	while True:
+
+	
+		current_tracker_sample = eyetracker.sample()
+		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
+		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
+		
+		my_var[0] = current_tracker_sample[0]
+		my_var[1] = current_tracker_sample[1]
+		my_var[2] = 0
+		
+		#print('xxx: ',my_var[0]) #tuple(x,y)
+		#print('yyy: ',my_var[1]) #tuple(x,y)
+		
+		#gaze_array = updateRollingArray(gaze_array,current_tracker_sample)
+	
+		
+		#
+
+
+#
+my_var = [1, 2, 3]
+thread_eyetracker = threading.Thread(target=thread_tracker_function, args=()) # , daemon=True
+
+thread_eyetracker.start()
+
+
+#thread_eyetracker.
+
+
+
+
+#while True:
+	#print("var1: ", my_var[0]," var2: ", my_var[1])
+	#Sleep(1000)
+	#pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ---------------------------------------------------- Tetris start ---------------------------------------------------------------
 # Control keys:
 # Down - Drop stone faster
 # Left/Right - Move stone
@@ -8,13 +336,15 @@
 from random import randrange as rand
 import pygame, sys
 
+
+
 # The configuration
 config = {
 	'cell_size':	20,
 	'cols':		16,
 	'rows':		32,
 	'delay':	750,
-	'maxfps':	30
+	'maxfps':	60
 }
 
 colors = [
@@ -462,6 +792,10 @@ class TetrisApp(object):
 	def new_stone(self):
 		# make sure to update the if statements according to 
 		# the readings from the sensors
+		
+		print("gazex: ", my_var[0]," gazey: ", my_var[1])
+		print("meangsr: ", my_var2[0]," currentgsr: ", my_var2[1])
+		
 		
 		self.stone_y = 0
 		if measurement == 0:			
