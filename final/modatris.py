@@ -157,10 +157,7 @@ def thread_gsr_function():
 		
 		#print(np.mean(moving_ave), "  :  " ,moving_ave[len(num_array)-1])
 	
-	
-	
-	
-		
+
 		my_var2[0] = np.mean(moving_ave)
 		my_var2[1] = moving_ave[len(num_array)-1]
 		my_var2[2] = 0
@@ -212,7 +209,7 @@ def calibrateEyeTrackerPyGaze():
     disp = Display()
     tracker = EyeTracker(disp,resolution=(1920,1080),  trackertype='tobii')
     
-    tracker.calibrate()
+    #tracker.calibrate()
     
     #tracker.close() 
     disp.close()
@@ -250,7 +247,7 @@ def updateRollingArray(arr,new_value):
     shifted_arr[0] = new_value
     return shifted_arr
 
-
+from scipy.spatial import distance
 #print(avaliableEyeTrackers())
 
 eyetracker = calibrateEyeTrackerPyGaze()
@@ -267,18 +264,61 @@ current_tracker_sample = eyetracker.sample()
 def thread_tracker_function():
 	
 	#global current_tracker_sample
-	global my_var
-
-	while True:
-
+	global my_var2
 	
+	nnn=5001-1
+	nnnn = nnn+1
+	
+	N = 5000
+		
+	num_array_x =  [0] * nnn
+	num_array_y =  [0] * nnn
+
+	num_array_x_new =  [0] * 60
+	num_array_y_new =  [0] * 60
+		
+	while True:
 		current_tracker_sample = eyetracker.sample()
+	
+
+
+		num_array_x.pop(0)
+		num_array_y.pop(0)
+
+		num_array_x.insert(len( num_array_x ), current_tracker_sample[0])
+		num_array_y.insert(len( num_array_y ), current_tracker_sample[1])
+		anp1 = array( num_array_x )
+		anp2 = array( num_array_y )
+		moving_ave1 = uniform_filter1d(anp1, size=N)
+		moving_ave2 = uniform_filter1d(anp2, size=N)
+
+
+
+		num_array_x_new.insert(len( num_array_x_new ), current_tracker_sample[0])
+		num_array_y_new.insert(len( num_array_y_new ), current_tracker_sample[1])
+		anp1_new = array( num_array_x_new )
+		anp2_new = array( num_array_y_new )
+		moving_ave1_new = uniform_filter1d(anp1_new, size=50)
+		moving_ave2_new = uniform_filter1d(anp2_new, size=50)
+
+		distx = np.linalg.norm(np.mean(moving_ave1)-np.mean(moving_ave1_new))
+		disty = np.linalg.norm(np.mean(moving_ave2)-np.mean(moving_ave2_new))		
+		
+
+		
+		p1 = (np.mean(moving_ave1), np.mean(moving_ave2))
+		p2 = (np.mean(moving_ave1_new), np.mean(moving_ave2_new))
+		ddddd = distance.euclidean(p1, p2)
+			
+	
+		
 		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
 		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
 		
-		my_var[0] = current_tracker_sample[0]
-		my_var[1] = current_tracker_sample[1]
-		my_var[2] = 0
+		my_var[0] = np.mean(moving_ave1)
+		my_var[1] = np.mean(moving_ave2)
+		my_var[2] = ddddd
+		my_var[3] = 0
 		
 		#print('xxx: ',my_var[0]) #tuple(x,y)
 		#print('yyy: ',my_var[1]) #tuple(x,y)
@@ -290,7 +330,7 @@ def thread_tracker_function():
 
 
 #
-my_var = [1, 2, 3]
+my_var = [1, 2, 3, 4]
 thread_eyetracker = threading.Thread(target=thread_tracker_function, args=()) # , daemon=True
 
 thread_eyetracker.start()
@@ -744,9 +784,10 @@ level9 = [
 	 [2, 2, 2, 0],
 	 [2, 2, 2, 2]]]
 
-measurement = rand(0,10) # measurements from sensor - plug in own data
-
-print(measurement)
+last_diff_gsr = my_var2[1] - my_var2[0]
+last_gaze_var = my_var[2]
+measurement = 1 # measurements from sensor - plug in own data
+#print(measurement)
 
 def rotate_clockwise(shape):
 	return [[shape[y][x] for y in range(len(shape))]
@@ -780,6 +821,10 @@ def new_board():
 	return board
 
 class TetrisApp(object):
+
+
+
+
 	def __init__(self):
 		pygame.init()
 		pygame.key.set_repeat(250,25)
@@ -793,9 +838,34 @@ class TetrisApp(object):
 		# make sure to update the if statements according to 
 		# the readings from the sensors
 		
-		print("gazex: ", my_var[0]," gazey: ", my_var[1])
-		print("meangsr: ", my_var2[0]," currentgsr: ", my_var2[1])
+		#print("gazex: ", my_var[0]," gazey: ", my_var[1],"gazex: ", my_var[0]," gazey: ", my_var[1])
 		
+		#print("meangsr: ", my_var2[0]," currentgsr: ", my_var2[1])
+		
+		#print("gaze", my_var[2])
+		global measurement
+		global last_diff_gsr
+		global last_gaze_var
+		
+		curr_diff_gsr = my_var2[1] - my_var2[0]
+		curr_gaze_var = my_var[2]
+		
+		# measurement = difficulty level 
+
+		# if the user was more stressed on eye and gsr reduce by 1
+		if curr_diff_gsr > last_diff_gsr and curr_gaze_var > last_gaze_var:
+			if measurement != 1:
+				measurement = measurement -1
+		
+		#if user was calm on eye and gsr increase by 1 
+		if curr_diff_gsr < last_diff_gsr or curr_gaze_var < last_gaze_var:
+			if measurement != 0 and measurement < 9:
+				measurement = measurement +1
+		
+		print(measurement,curr_diff_gsr,last_diff_gsr,curr_gaze_var,last_gaze_var)
+		
+		last_diff_gsr = my_var2[1] - my_var2[0]
+		last_gaze_var = my_var[2]
 		
 		self.stone_y = 0
 		if measurement == 0:			
