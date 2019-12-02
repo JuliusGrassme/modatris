@@ -66,6 +66,31 @@ def updateRollingArray(arr,new_value):
     return shifted_arr
 
 
+# pupil size measurements
+
+def getPupilSize(self):
+    
+    # check to see if the eyetracker is connected and turned on
+    if self.eyetracker is None:
+        raise ValueError("There is no eyetracker.")
+    if self.tracking is False:
+        raise ValueError("The eyetracker is not turned on.")
+        
+    # while tracking
+    while True:
+        lPup = self.gazeData['left_pupil_diameter']
+        rPup = self.gazeData['right_pupil_diameter']
+        pupSizes = (lPup, rPup)
+        
+        # if pupils were found
+        if lPup != -1 and rPup != -1:
+            avgPupSize = np.nanmean(pupSizes)
+        else: # otherwise return zero
+            avgPupSize = (0.0)
+            
+        # return pupil size
+        return avgPupSize
+
 print(avaliableEyeTrackers())
 
 eyetracker = calibrateEyeTrackerPyGaze()
