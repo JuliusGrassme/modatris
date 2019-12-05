@@ -16,9 +16,6 @@ from numpy  import array
 
 
 
-
-
-
 def wait_for_ack():
 	ddata = ""
 	ack = struct.pack('B', 0xff)
@@ -200,6 +197,30 @@ import logging
 
 import time
 
+def getPupilSize(self):
+    
+    # check to see if the eyetracker is connected and turned on
+    if self.eyetracker is None:
+        raise ValueError("There is no eyetracker.")
+    if self.tracking is False:
+        raise ValueError("The eyetracker is not turned on.")
+        
+    # while tracking
+    while True:
+        lPup = self.gazeData['left_pupil_diameter']
+        rPup = self.gazeData['right_pupil_diameter']
+        pupSizes = (lPup, rPup)
+        
+        # if pupils were found
+        if lPup != -1 and rPup != -1:
+            avgPupSize = np.nanmean(pupSizes)
+        else: # otherwise return zero
+            avgPupSize = (0.0)
+            
+        # return pupil size
+        return avgPupSize
+
+
 
 def calibrateEyeTrackerPyGaze():
     """
@@ -315,10 +336,17 @@ def thread_tracker_function():
 		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
 		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
 		
+		
+	
+		
+		
+		
 		my_var[0] = np.mean(moving_ave1)
 		my_var[1] = np.mean(moving_ave2)
 		my_var[2] = ddddd
-		my_var[3] = 0
+		my_var[3] = eyetracker.pupil_size()
+		
+		#print(my_var[3])
 		
 		#print('xxx: ',my_var[0]) #tuple(x,y)
 		#print('yyy: ',my_var[1]) #tuple(x,y)
@@ -383,7 +411,7 @@ config = {
 	'cell_size':	20,
 	'cols':		16,
 	'rows':		32,
-	'delay':	750,
+	'delay':	50,
 	'maxfps':	60
 }
 
@@ -784,9 +812,10 @@ level9 = [
 	 [2, 2, 2, 0],
 	 [2, 2, 2, 2]]]
 
+
 last_diff_gsr = my_var2[1] - my_var2[0]
 last_gaze_var = my_var[2]
-measurement = 1 # measurements from sensor - plug in own data
+measurement = 9 # measurements from sensor - plug in own data
 #print(measurement)
 
 def rotate_clockwise(shape):
@@ -848,7 +877,7 @@ class TetrisApp(object):
 		global last_gaze_var
 		
 		curr_diff_gsr = my_var2[1] - my_var2[0]
-		curr_gaze_var = my_var[2]
+		curr_gaze_var = my_var[3]
 		
 		# measurement = difficulty level 
 
@@ -863,41 +892,48 @@ class TetrisApp(object):
 				measurement = measurement +1
 		
 		print(measurement,curr_diff_gsr,last_diff_gsr,curr_gaze_var,last_gaze_var)
+		print(config)
+		
+		
 		
 		last_diff_gsr = my_var2[1] - my_var2[0]
-		last_gaze_var = my_var[2]
+		last_gaze_var = my_var[3]
 		
+		self.drop_amount = 0
 		self.stone_y = 0
+		
+		valuezzz = 50 
+		
 		if measurement == 0:			
 			self.stone = normal[rand(len(normal))]
-			self.stone_y += 1
+			config['delay'] = valuezzz*10
 		elif measurement == 1:
 			self.stone = level1[rand(len(level1))]
-			self.stone_y += 2
+			config['delay'] = valuezzz*9
 		elif measurement == 2:
 			self.stone = level2[rand(len(level2))]
-			self.stone_y += 3
+			config['delay'] = valuezzz*8
 		elif measurement == 3:
 			self.stone = level3[rand(len(level3))]
-			self.stone_y += 4
+			config['delay'] = valuezzz*7
 		elif measurement == 4:
 			self.stone = level4[rand(len(level4))]
-			self.stone_y += 5
+			config['delay'] = valuezzz*6
 		elif measurement == 5:
 			self.stone == level5[rand(len(level5))]
-			self.stone_y += 6
+			config['delay'] = valuezzz*5
 		elif measurement == 6:
 			self.stone = level6[rand(len(level6))]
-			self.stone_y += 7
+			config['delay'] = valuezzz*4
 		elif measurement == 7:
 			self.stone = level7[rand(len(level7))]
-			self.stone_y += 8
+			config['delay'] = valuezzz*3
 		elif measurement == 8:
 			self.stone = level8[rand(len(level8))]
-			self.stone_y += 9
+			config['delay'] = valuezzz*2
 		elif measurement == 9:
 			self.stone = level9[rand(len(level9))]
-			self.stone_y += 10
+			config['delay'] = valuezzz*1
 		else:
 			print ("Please make sure sensors are configured properly!")
 
