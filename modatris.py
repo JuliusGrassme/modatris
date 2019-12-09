@@ -1,20 +1,23 @@
 #--------------------------------------------------------------- gsr tracker ------------------------------------------------------------------------------------
 
 
+
 import threading
 
 import sys, struct, serial
 
 import math
 import numpy as np
-
+from scipy import signal
+from scipy.signal import butter, sosfilt, sosfreqz, medfilt
 
 import matplotlib.pyplot as plt
 from scipy.ndimage.filters import uniform_filter1d
 
 from numpy  import array
 
-
+from datetime import datetime
+from datetime import timedelta
 
 def wait_for_ack():
 	ddata = ""
@@ -43,8 +46,10 @@ print( "enable internal expansion board power, done." )
 
 # send the set sampling rate command
 #sampling_freq = 32768 / clock_wait = X Hz
-sampling_freq = 50
+sampling_freq = 30
 clock_wait = (2 << 14) / sampling_freq
+
+
 
 
 
@@ -71,24 +76,51 @@ print( "start command sending, done." )
 
 ddata = bytearray()
 
+
+# this is the 1 minute buffer for the gsr data
+n_gsr_size    = 30*60
+num_array_gsr = [0] * n_gsr_size
+num_array_ppg = [0] * n_gsr_size
+
 def thread_gsr_function():
 	print("start gsr")
 	
 	nnn=5001-1
 	nnnn = nnn+1
 	
-	num_array =  [0] * nnn
-	num_array2 =  [0] * nnn
+	#num_array =  [0] * nnn
+	#num_array2 =  [0] * nnn
 	#print(num_array)
-	numrange = range(0,nnn)
-	numrange2 = range(0,nnn)
+	#numrange = range(0,nnn)
+	#numrange2 = range(0,nnn)
 
-	num_to_add = 0
-	
-	global my_var2
+	#num_to_add = 0
+	global num_array_gsr
+	global num_array_ppg
+	global current_gsr_values
 	global ddata
 	
+	
+	
+	
+	
+	exetime = datetime.now()
+		
 	while True:
+		
+		dt = datetime.now() - exetime
+		ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+
+		exeevery = 33.3333 # ms
+
+	
+	
+	
+	
+	
+	
+	
+	
 		numbytes = 0
 		framesize = 8 # 1byte packet type + 3byte timestamp + 2 byte GSR + 2 byte PPG(Int A13)
 		#print( "Packet Type\tTimestamp\tGSR\tPPG" )
@@ -129,42 +161,55 @@ def thread_gsr_function():
 
 		timestamp = timestamp0 + timestamp1*256 + timestamp2*65536
 
-		num_array.pop(0)
-		num_array2.pop(0)
+		#num_array.pop(0)
+		#num_array2.pop(0)
 		
 		#print("O: ", GSR_ohm)
 		#print("L: ", num_array[ len(num_array)-2 ])
 		
-		xxx =  GSR_ohm  
-		yyy =   num_array[ len(num_array)-2 ]
+		#xxx =  GSR_ohm  
+		#yyy =  num_array[ len(num_array)-2 ]
 		
-		num_array2.insert(len(num_array2), GSR_ohm)
+		#num_array2.insert(len(num_array2), GSR_ohm)
 		
-		if abs ( xxx - yyy )  > 500 :
-			#print("big")
-			#GSR_ohm = num_array[ len(num_array)-2 ]
-			num_array.insert(len(num_array), GSR_ohm)
-		else:
-			num_array.insert(len(num_array), GSR_ohm)
+		#if abs ( xxx - yyy )  > 500 :
+		#	#print("big")
+		#	#GSR_ohm = num_array[ len(num_array)-2 ]
+		#	num_array.insert(len(num_array), GSR_ohm)
+		#else:
+		#	num_array.insert(len(num_array), GSR_ohm)
 		
-		N = 5000
-		anp = array( num_array )
-		moving_ave = uniform_filter1d(anp, size=N)
+		# if it is time to save data save data to array
+		if ms > exeevery:
+			#print(ms)
+			exetime = datetime.now()
+			
+			num_array_gsr.pop(0)
+			num_array_gsr.insert(len(num_array_gsr), GSR_ohm)
+			
+			num_array_ppg.pop(0)
+			num_array_ppg.insert(len(num_array_ppg), PPG_mv)
+			
+			
+		#N = 5000
+		#anp = array( num_array )
+		#moving_ave = uniform_filter1d(anp, size=N)
 		#moving_ave_v = moving_ave / np.sqrt(np.sum(moving_ave**2))
 		
 		#print(np.mean(moving_ave), "  :  " ,moving_ave[len(num_array)-1])
 	
 
-		my_var2[0] = np.mean(moving_ave)
-		my_var2[1] = moving_ave[len(num_array)-1]
-		my_var2[2] = 0
+		current_gsr_values[0] = 0#np.mean(moving_ave)
+		current_gsr_values[1] = 0#moving_ave[len(num_array)-1]
+		current_gsr_values[2] = 0
+		current_gsr_values[3] = 0
 
 
 
 
 
 
-my_var2 = [1, 2, 3]
+current_gsr_values = [1, 2, 3, 4]
 thread_gsr_tracker = threading.Thread(target=thread_gsr_function, args=(), daemon=True) # 
 
 thread_gsr_tracker.start()
@@ -192,10 +237,9 @@ from pygaze import settings; settings.DISPSIZE = (1920,1080)
 
 import numpy as np
 import pandas as pd
-
 import logging
-
 import time
+
 
 def getPupilSize(self):
     
@@ -230,7 +274,7 @@ def calibrateEyeTrackerPyGaze():
     disp = Display()
     tracker = EyeTracker(disp,resolution=(1920,1080),  trackertype='tobii')
     
-    #tracker.calibrate()
+    tracker.calibrate()
     
     #tracker.close() 
     disp.close()
@@ -282,83 +326,125 @@ current_tracker_sample = eyetracker.sample()
 #eyetracker.close()
 
 
+
+
+
+# this is the 1 minute buffer for the pupil data
+n_pupil_size    = 30*60
+num_array_pupil = [0] * n_pupil_size
+num_array_x =  [0] * n_pupil_size
+num_array_y =  [0] * n_pupil_size
+
+
+
 def thread_tracker_function():
 	
 	#global current_tracker_sample
-	global my_var2
 	
-	nnn=5001-1
-	nnnn = nnn+1
-	
-	N = 5000
-		
-	num_array_x =  [0] * nnn
-	num_array_y =  [0] * nnn
+	global current_eye_values
+	global num_array_pupil
+	global num_array_x
+	global num_array_y
 
-	num_array_x_new =  [0] * 60
-	num_array_y_new =  [0] * 60
+	exetime_tracker = datetime.now()
 		
 	while True:
-		current_tracker_sample = eyetracker.sample()
-	
-
-
-		num_array_x.pop(0)
-		num_array_y.pop(0)
-
-		num_array_x.insert(len( num_array_x ), current_tracker_sample[0])
-		num_array_y.insert(len( num_array_y ), current_tracker_sample[1])
-		anp1 = array( num_array_x )
-		anp2 = array( num_array_y )
-		moving_ave1 = uniform_filter1d(anp1, size=N)
-		moving_ave2 = uniform_filter1d(anp2, size=N)
-
-
-
-		num_array_x_new.insert(len( num_array_x_new ), current_tracker_sample[0])
-		num_array_y_new.insert(len( num_array_y_new ), current_tracker_sample[1])
-		anp1_new = array( num_array_x_new )
-		anp2_new = array( num_array_y_new )
-		moving_ave1_new = uniform_filter1d(anp1_new, size=50)
-		moving_ave2_new = uniform_filter1d(anp2_new, size=50)
-
-		distx = np.linalg.norm(np.mean(moving_ave1)-np.mean(moving_ave1_new))
-		disty = np.linalg.norm(np.mean(moving_ave2)-np.mean(moving_ave2_new))		
 		
-
+		dt = datetime.now() - exetime_tracker
+		ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
 		
-		p1 = (np.mean(moving_ave1), np.mean(moving_ave2))
-		p2 = (np.mean(moving_ave1_new), np.mean(moving_ave2_new))
-		ddddd = distance.euclidean(p1, p2)
+		
+		exeevery = 33.3333 # ms
+		
+		#while True:
+		#print ( time.sleep( exeevery - ((time.time() - starttime) % exeevery)) ) 
+		
+		if ms > exeevery:
+			#print(ms)
+			exetime_tracker = datetime.now()
 			
-	
+			#print("Eye" + str( datetime.now() ) )
+			
+
+			
+			
+			
+			# get the current pupil value
+			current_eyetracker_pupilval = eyetracker.pupil_size()
+			# save the pupil value in num_array_pupil
+			num_array_pupil.pop(0)
+			num_array_pupil.insert(len( num_array_pupil ), current_eyetracker_pupilval )
+			
+			
+			# get the current x and y 
+			current_tracker_sample = eyetracker.sample()
+			#current_tracker_sample[0] x
+			#current_tracker_sample[1] y
+
+			num_array_x.pop(0)
+			num_array_x.insert(len( num_array_x ), current_tracker_sample[0])
+			
+			num_array_y.pop(0)
+			num_array_y.insert(len( num_array_y ), current_tracker_sample[1])
+			
+			
+			"""
+
+			
+			anp1 = array( num_array_x )
+			
+			anp2 = array( num_array_y )
+			
+			moving_ave1 = uniform_filter1d(anp1, size=N)
+			moving_ave2 = uniform_filter1d(anp2, size=N) 
+
+			num_array_x_new.insert(len( num_array_x_new ), current_tracker_sample[0])
+			num_array_y_new.insert(len( num_array_y_new ), current_tracker_sample[1])
+			anp1_new = array( num_array_x_new )
+			anp2_new = array( num_array_y_new )
+			moving_ave1_new = uniform_filter1d(anp1_new, size=50)
+			moving_ave2_new = uniform_filter1d(anp2_new, size=50)
+
+			distx = np.linalg.norm(np.mean(moving_ave1)-np.mean(moving_ave1_new))
+			disty = np.linalg.norm(np.mean(moving_ave2)-np.mean(moving_ave2_new))		
+			
+
+			
+			p1 = (np.mean(moving_ave1), np.mean(moving_ave2))
+			p2 = (np.mean(moving_ave1_new), np.mean(moving_ave2_new))
+			ddddd = distance.euclidean(p1, p2)
+			"""
 		
-		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
-		#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
+			
+			#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
+			#print('current gaze is at: ',current_tracker_sample) #tuple(x,y)
+			
+			
+			
+			
+			
+			
+			current_eye_values[0] = current_tracker_sample[0] #np.mean(moving_ave1)
+			current_eye_values[1] = current_tracker_sample[1] #np.mean(moving_ave2)
+			current_eye_values[2] = 0 #ddddd
+			current_eye_values[3] = current_eyetracker_pupilval # this is the current value used
+			
+			#print(current_eye_values[3])
+			#Sleep(100)
+			
+			#print('xxx: ',current_eye_values[0]) #tuple(x,y)
+			#print('yyy: ',current_eye_values[1]) #tuple(x,y)
+			
+			#gaze_array = updateRollingArray(gaze_array,current_tracker_sample)
 		
-		
-	
-		
-		
-		
-		my_var[0] = np.mean(moving_ave1)
-		my_var[1] = np.mean(moving_ave2)
-		my_var[2] = ddddd
-		my_var[3] = eyetracker.pupil_size()
-		
-		#print(my_var[3])
-		
-		#print('xxx: ',my_var[0]) #tuple(x,y)
-		#print('yyy: ',my_var[1]) #tuple(x,y)
-		
-		#gaze_array = updateRollingArray(gaze_array,current_tracker_sample)
-	
-		
-		#
+			
+			#
 
 
-#
-my_var = [1, 2, 3, 4]
+
+
+
+current_eye_values = [1, 2, 3, 4]
 thread_eyetracker = threading.Thread(target=thread_tracker_function, args=()) # , daemon=True
 
 thread_eyetracker.start()
@@ -370,7 +456,7 @@ thread_eyetracker.start()
 
 
 #while True:
-	#print("var1: ", my_var[0]," var2: ", my_var[1])
+	#print("var1: ", current_eye_values[0]," var2: ", current_eye_values[1])
 	#Sleep(1000)
 	#pass
 
@@ -417,8 +503,8 @@ config = {
 
 colors = [
 	(142, 214, 159),
-	(214, 186, 228),
-	(142, 168, 214),
+	(214, 142, 159),
+	(142, 159, 214),
 	(0,   0,   255),
 	(255, 120, 0  ),
 	(255, 255, 0  ),
@@ -813,8 +899,8 @@ level9 = [
 	 [2, 2, 2, 2]]]
 
 
-last_diff_gsr = my_var2[1] - my_var2[0]
-last_gaze_var = my_var[2]
+last_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
+last_gaze_var = current_eye_values[2]
 measurement = 9 # measurements from sensor - plug in own data
 #print(measurement)
 
@@ -867,17 +953,18 @@ class TetrisApp(object):
 		# make sure to update the if statements according to 
 		# the readings from the sensors
 		
-		#print("gazex: ", my_var[0]," gazey: ", my_var[1],"gazex: ", my_var[0]," gazey: ", my_var[1])
+		#print("gazex: ", current_eye_values[0]," gazey: ", current_eye_values[1],"gazex: ", current_eye_values[0]," gazey: ", current_eye_values[1])
 		
-		#print("meangsr: ", my_var2[0]," currentgsr: ", my_var2[1])
+		#print("meangsr: ", current_gsr_values[0]," currentgsr: ", current_gsr_values[1])
 		
-		#print("gaze", my_var[2])
+		#print("gaze", current_eye_values[2])
 		global measurement
 		global last_diff_gsr
 		global last_gaze_var
 		
-		curr_diff_gsr = my_var2[1] - my_var2[0]
-		curr_gaze_var = my_var[3]
+		# get the current values from the 2 threads
+		curr_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
+		curr_gaze_var = current_eye_values[3]
 		
 		# measurement = difficulty level 
 
@@ -896,44 +983,45 @@ class TetrisApp(object):
 		
 		
 		
-		last_diff_gsr = my_var2[1] - my_var2[0]
-		last_gaze_var = my_var[3]
+		last_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
+		last_gaze_var = current_eye_values[3]
 		
 		self.drop_amount = 0
 		self.stone_y = 0
 		
 		valuezzz = 50 
+		measurement = 0
 		
 		if measurement == 0:			
 			self.stone = normal[rand(len(normal))]
 			config['delay'] = valuezzz*10
 		elif measurement == 1:
 			self.stone = level1[rand(len(level1))]
-			config['delay'] = valuezzz*9
+			config['delay'] = valuezzz*11
 		elif measurement == 2:
 			self.stone = level2[rand(len(level2))]
-			config['delay'] = valuezzz*8
+			config['delay'] = valuezzz*12
 		elif measurement == 3:
 			self.stone = level3[rand(len(level3))]
-			config['delay'] = valuezzz*7
+			config['delay'] = valuezzz*13
 		elif measurement == 4:
 			self.stone = level4[rand(len(level4))]
-			config['delay'] = valuezzz*6
+			config['delay'] = valuezzz*14
 		elif measurement == 5:
 			self.stone == level5[rand(len(level5))]
-			config['delay'] = valuezzz*5
+			config['delay'] = valuezzz*15
 		elif measurement == 6:
 			self.stone = level6[rand(len(level6))]
-			config['delay'] = valuezzz*4
+			config['delay'] = valuezzz*16
 		elif measurement == 7:
 			self.stone = level7[rand(len(level7))]
-			config['delay'] = valuezzz*3
+			config['delay'] = valuezzz*17
 		elif measurement == 8:
 			self.stone = level8[rand(len(level8))]
-			config['delay'] = valuezzz*2
+			config['delay'] = valuezzz*18
 		elif measurement == 9:
 			self.stone = level9[rand(len(level9))]
-			config['delay'] = valuezzz*1
+			config['delay'] = valuezzz*19
 		else:
 			print ("Please make sure sensors are configured properly!")
 
@@ -949,7 +1037,7 @@ class TetrisApp(object):
 	
 	def center_msg(self, msg):
 		for i, line in enumerate(msg.splitlines()):
-			msg_image =  pygame.font.Font(pygame.font.get_default_font(), 12).render(line, False, (255,255,255), (0,0,0))
+			msg_image =  pygame.font.Font(pygame.font.get_default_font(), 12).render(line, False, (255,255,255), (142, 214, 159))
 			msgim_center_x, msgim_center_y = msg_image.get_size()
 			msgim_center_x //= 2
 			msgim_center_y //= 2
@@ -1004,6 +1092,25 @@ class TetrisApp(object):
 			self.init_game()
 			self.gameover = False
 	
+	
+	
+
+	def butter_bandpass(lowcut, highcut, fs, order=5):
+			
+			
+			nyq = 0.5 * fs
+			low = lowcut / nyq
+			high = highcut / nyq
+			sos = butter(order, [low, high], analog=False, btype='band', output='sos')
+			y = sosfilt(sos, data)
+			
+			return sos
+
+	def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+			sos = butter_bandpass(lowcut, highcut, fs, order=order)
+			y = sosfilt(sos, data)
+			return y	
+	
 	def run(self):
 		key_actions = {
 			'ESCAPE':	self.quit,
@@ -1020,10 +1127,208 @@ class TetrisApp(object):
 		
 		pygame.time.set_timer(pygame.USEREVENT+1, config['delay'])
 		dont_burn_my_cpu = pygame.time.Clock()
-		while 1:
-			self.screen.fill((0,0,0))
+		
+		plotted = 0
+		
+		exestart = datetime.now()
+			
+		while True:
+			
+			dt = datetime.now() - exestart
+			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+			
+			
+			exeevery = 85000 # 60 sec + 5sec so the buffer is for sure not empty in nay spots
+			
+			
+			if ms > exeevery:
+		
+				if plotted == 0:
+				
+					plotted = 1
+				
+					print("print all the matplotlib stuff")
+				
+				
+					dt = 0.03333333333333333333333333333333333333333333
+					t = np.arange(0, 60, dt)
+
+					s1 = np.array(num_array_pupil)
+					s2 = np.array(num_array_x)
+					s3 = np.array(num_array_y)
+
+					s4 = np.array(num_array_gsr)
+					s5 = np.array(num_array_ppg)
+
+					print("length:"  + str(len(s5)) )
+					plt.figure(0)
+					fig, axs = plt.subplots(4, 1)
+					axs[0].plot(t, s1)
+					axs[0].set_xlim(0, 60)
+					axs[0].set_xlabel('time')
+					axs[0].set_ylabel('s1')
+					axs[0].grid(True)
+
+					axs[1].plot( t, s2)
+					axs[1].set_xlim(0, 60)
+					axs[1].set_xlabel('time')
+					axs[1].set_ylabel('s2')
+					axs[1].grid(True)
+
+					axs[2].plot( t, s3)
+					axs[2].set_xlim(0, 60)
+					axs[2].set_xlabel('time')
+					axs[2].set_ylabel('s3')
+					axs[2].grid(True)
+
+					axs[3].plot( t, s4)
+					axs[3].set_xlim(0, 60)
+					axs[3].set_xlabel('time')
+					axs[3].set_ylabel('s4')
+					axs[3].grid(True)
+
+					#axs[4].plot( t, s5)
+					#axs[4].set_xlim(0, 60)
+					#axs[4].set_xlabel('time')
+					#axs[4].set_ylabel('s5')
+					#axs[4].grid(True)
+					
+					fig.tight_layout()
+					#plt.show()
+					
+					
+					plt.figure(1)
+					fig, axs = plt.subplots(12, 1)
+					
+					cxy, f = axs[0].cohere(s1, s2, 900, 15)
+					axs[0].set_ylabel('s1 s2 co')
+					cxy, f = axs[1].cohere(s1, s3, 900, 15)
+					axs[1].set_ylabel('s1 s3 co')
+					cxy, f = axs[2].cohere(s1, s4, 900, 15)
+					axs[2].set_ylabel('s1 s4 co')
+					#cxy, f = axs[3].cohere(s1, s5, 900, 15)
+					#axs[3].set_ylabel('s1 s5 co')
+
+					cxy, f = axs[3].cohere(s2, s1, 900, 15)
+					axs[3].set_ylabel('s2 s1 co')
+					cxy, f = axs[4].cohere(s2, s3, 900, 15)
+					axs[4].set_ylabel('s2 s3 co')
+					cxy, f = axs[5].cohere(s2, s4, 900, 15)
+					axs[5].set_ylabel('s2 s4 co')
+					#cxy, f = axs[7].cohere(s2, s5, 900, 15)
+					#axs[7].set_ylabel('s2 s5 co')
+
+					cxy, f = axs[6].cohere(s3, s1, 900, 15)
+					axs[6].set_ylabel('s3 s1 co')
+					cxy, f = axs[7].cohere(s3, s2, 900, 15)
+					axs[7].set_ylabel('s3 s2 co')
+					cxy, f = axs[8].cohere(s3, s4, 900, 15)
+					axs[8].set_ylabel('s3 s4 co')
+					#cxy, f = axs[11].cohere(s3, s5, 900, 15)
+					#axs[11].set_ylabel('s3 s5 co')
+
+					cxy, f = axs[9].cohere(s4, s1, 900, 15)
+					axs[9].set_ylabel('s4 s1 co')
+					cxy, f = axs[10].cohere(s4, s2, 900, 15)
+					axs[10].set_ylabel('s4 s2 co')
+					cxy, f = axs[11].cohere(s4, s3, 900, 15)
+					axs[11].set_ylabel('s4 s3 co')
+					#cxy, f = axs[15].cohere(s4, s5, 900, 15)
+					#axs[15].set_ylabel('s4 s5 co')
+					
+					#cxy, f = axs[16].cohere(s5, s1, 900, 15)
+					#axs[16].set_ylabel('s5 s1 co')
+					#cxy, f = axs[17].cohere(s5, s2, 900, 15)
+					#axs[17].set_ylabel('s5 s2 co')
+					#cxy, f = axs[18].cohere(s5, s3, 900, 15)
+					#axs[18].set_ylabel('s5 s3 co')
+					#cxy, f = axs[19].cohere(s5, s3, 900, 15)
+					#axs[19].set_ylabel('s5 s4 co')
+
+					fig.tight_layout()
+					
+					
+					
+
+
+					# Sample rate and desired cutoff frequencies (in Hz).
+					fs = 30.0# Sampling frequency
+					lowcut = 50.0
+					highcut = 110.0
+					nyq = 0.5 * fs
+					low = lowcut / nyq
+					high = highcut / nyq
+					order = 5
+					
+					#s1 = sosfilt(butter(order, [low, high], analog=False, btype='band', output='sos'), s1)
+					#s2 = sosfilt(butter(order, [low, high], analog=False, btype='band', output='sos'), s2)
+					#s3 = sosfilt(butter(order, [low, high], analog=False, btype='band', output='sos'), s3)
+					#s4 = sosfilt(butter(order, [low, high], analog=False, btype='band', output='sos'), s4)
+					#s5 = sosfilt(butter(order, [low, high], analog=False, btype='band', output='sos'), s5)
+					
+					order = 5
+					fs = 30.0# Sampling frequency
+					fc = 5  # Cut-off frequency of the filter
+					w = fc / (fs / 2) # Normalize the frequency
+					b, a = signal.butter(order, w, 'low')
+					
+					#s1 = signal.filtfilt(b, a, s1)
+					#s2 = signal.filtfilt(b, a, s2)
+					#s3 = signal.filtfilt(b, a, s3)
+					
+					
+					s5 = signal.filtfilt(b, a, s5)
+						
+
+					order = 5
+					fs = 30.0# Sampling frequency
+					fc = 1  # Cut-off frequency of the filter
+					w = fc / (fs / 2) # Normalize the frequency
+					b, a = signal.butter(order, w, 'low')
+					
+					#s4 = signal.filtfilt(b, a, s4)
+					s4 = medfilt(s4,301)
+					s1 = medfilt(s1,301)
+
+					# Plot the frequency response for a few different orders.
+					plt.figure(2)
+					fig, axs = plt.subplots(4, 1)
+					axs[0].plot(t, s1)
+					axs[0].set_xlim(0, 60)
+					axs[0].set_xlabel('time')
+					axs[0].set_ylabel('s1')
+					axs[0].grid(True)
+
+					axs[1].plot( t, s2)
+					axs[1].set_xlim(0, 60)
+					axs[1].set_xlabel('time')
+					axs[1].set_ylabel('s2')
+					axs[1].grid(True)
+
+					axs[2].plot( t, s3)
+					axs[2].set_xlim(0, 60)
+					axs[2].set_xlabel('time')
+					axs[2].set_ylabel('s3')
+					axs[2].grid(True)
+
+					axs[3].plot( t, s4)
+					axs[3].set_xlim(0, 60)
+					axs[3].set_xlabel('time')
+					axs[3].set_ylabel('s4')
+					axs[3].grid(True)
+
+					
+					fig.tight_layout()
+					
+					
+					
+					
+					plt.show()
+		
+			self.screen.fill((142, 214, 159))
 			if self.gameover:
 				self.center_msg("""Game Over! Press space to continue""")
+
 			else:
 				if self.paused:
 					self.center_msg("Paused")
