@@ -1,6 +1,10 @@
 #--------------------------------------------------------------- gsr tracker ------------------------------------------------------------------------------------
 
+pupil_low_mean = 1
+pupil_high_mean = 10
 
+gsr_low_mean = 1
+gsr_high_mean = 10
 
 import threading
 
@@ -80,6 +84,7 @@ ddata = bytearray()
 # this is the 1 minute buffer for the gsr data
 n_gsr_size    = 30*60
 num_array_gsr = [0] * n_gsr_size
+norm_array_gsr = [0] * n_gsr_size
 num_array_ppg = [0] * n_gsr_size
 
 def thread_gsr_function():
@@ -190,6 +195,13 @@ def thread_gsr_function():
 			num_array_ppg.pop(0)
 			num_array_ppg.insert(len(num_array_ppg), PPG_mv)
 			
+			gsr_arrayt = np.array(num_array_gsr[1500:1799])
+			gsr_qqqt = np.median(gsr_arrayt)
+			gsr_normt = (gsr_qqqt - gsr_low_mean)/(gsr_high_mean - gsr_low_mean)
+			
+			norm_array_gsr.pop(0)
+			norm_array_gsr.insert(len(norm_array_gsr), gsr_normt)		
+			
 			
 		#N = 5000
 		#anp = array( num_array )
@@ -273,7 +285,11 @@ def calibrateEyeTrackerPyGaze():
 
     disp = Display()
     tracker = EyeTracker(disp,resolution=(1920,1080),  trackertype='tobii')
-    
+	
+    #print(tracker.BINOCULAR)
+    #tracker.set_eye_used(2) #both eyes
+    # we hotfixed the lib to use both eyes as above does not work 
+	
     tracker.calibrate()
     
     #tracker.close() 
@@ -332,6 +348,7 @@ current_tracker_sample = eyetracker.sample()
 # this is the 1 minute buffer for the pupil data
 n_pupil_size    = 30*60
 num_array_pupil = [0] * n_pupil_size
+norm_array_pupil = [0] * n_pupil_size
 num_array_x =  [0] * n_pupil_size
 num_array_y =  [0] * n_pupil_size
 
@@ -347,6 +364,8 @@ def thread_tracker_function():
 	global num_array_y
 
 	exetime_tracker = datetime.now()
+	
+	
 		
 	while True:
 		
@@ -370,10 +389,25 @@ def thread_tracker_function():
 			
 			
 			# get the current pupil value
+
+
+
+			
+			
 			current_eyetracker_pupilval = eyetracker.pupil_size()
+			
 			# save the pupil value in num_array_pupil
 			num_array_pupil.pop(0)
 			num_array_pupil.insert(len( num_array_pupil ), current_eyetracker_pupilval )
+			
+			pupil_arrayt = np.array(num_array_pupil[1769:1799])
+			pupil_qqqt = np.median(pupil_arrayt)
+			#print("median pupil: " + str(pupil_qqqt))
+			pupil_normt = (pupil_qqqt - pupil_low_mean)/(pupil_high_mean - pupil_low_mean)
+			norm_array_pupil.pop(0)
+			norm_array_pupil.insert(len( norm_array_pupil ), pupil_normt )			
+			
+			
 			
 			
 			# get the current x and y 
@@ -450,6 +484,10 @@ thread_eyetracker = threading.Thread(target=thread_tracker_function, args=()) # 
 thread_eyetracker.start()
 
 
+
+measurement = 9
+
+
 #thread_eyetracker.
 
 
@@ -503,7 +541,7 @@ config = {
 
 colors = [
 	(142, 214, 159),
-	(214, 142, 159),
+	(15, 91, 130),
 	(142, 159, 214),
 	(0,   0,   255),
 	(255, 120, 0  ),
@@ -575,11 +613,8 @@ normal = [
 	 [1, 1]],
  
 	[[1, 1, 0],
-	 [1, 1, 1]],
- 
-	[[1, 1]],
-
-	[[1]]]
+	 [1, 1, 1]]
+	 ]
 
 level1 = [
 	[[1, 1, 1],
@@ -901,7 +936,7 @@ level9 = [
 
 last_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
 last_gaze_var = current_eye_values[2]
-measurement = 9 # measurements from sensor - plug in own data
+#measurement = 0 # measurements from sensor - plug in own data
 #print(measurement)
 
 def rotate_clockwise(shape):
@@ -963,68 +998,39 @@ class TetrisApp(object):
 		global last_gaze_var
 		
 		# get the current values from the 2 threads
-		curr_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
-		curr_gaze_var = current_eye_values[3]
+		#curr_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
+		#curr_gaze_var = current_eye_values[3]
 		
 		# measurement = difficulty level 
 
 		# if the user was more stressed on eye and gsr reduce by 1
-		if curr_diff_gsr > last_diff_gsr and curr_gaze_var > last_gaze_var:
-			if measurement != 1:
-				measurement = measurement -1
+		#if curr_diff_gsr > last_diff_gsr and curr_gaze_var > last_gaze_var:
+		#	if measurement != 1:
+		#		measurement = measurement -1
 		
 		#if user was calm on eye and gsr increase by 1 
-		if curr_diff_gsr < last_diff_gsr or curr_gaze_var < last_gaze_var:
-			if measurement != 0 and measurement < 9:
-				measurement = measurement +1
+		#if curr_diff_gsr < last_diff_gsr or curr_gaze_var < last_gaze_var:
+		#	if measurement != 0 and measurement < 9:
+		#		measurement = measurement +1
 		
-		print(measurement,curr_diff_gsr,last_diff_gsr,curr_gaze_var,last_gaze_var)
-		print(config)
+		#print(measurement,curr_diff_gsr,last_diff_gsr,curr_gaze_var,last_gaze_var)
+		#print(config)
 		
 		
 		
-		last_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
-		last_gaze_var = current_eye_values[3]
+		#last_diff_gsr = current_gsr_values[1] - current_gsr_values[0]
+		#last_gaze_var = current_eye_values[3]
 		
 		self.drop_amount = 0
 		self.stone_y = 0
 		
 		valuezzz = 50 
-		measurement = 0
-		
-		if measurement == 0:			
-			self.stone = normal[rand(len(normal))]
-			config['delay'] = valuezzz*10
-		elif measurement == 1:
-			self.stone = level1[rand(len(level1))]
-			config['delay'] = valuezzz*11
-		elif measurement == 2:
-			self.stone = level2[rand(len(level2))]
-			config['delay'] = valuezzz*12
-		elif measurement == 3:
-			self.stone = level3[rand(len(level3))]
-			config['delay'] = valuezzz*13
-		elif measurement == 4:
-			self.stone = level4[rand(len(level4))]
-			config['delay'] = valuezzz*14
-		elif measurement == 5:
-			self.stone == level5[rand(len(level5))]
-			config['delay'] = valuezzz*15
-		elif measurement == 6:
-			self.stone = level6[rand(len(level6))]
-			config['delay'] = valuezzz*16
-		elif measurement == 7:
-			self.stone = level7[rand(len(level7))]
-			config['delay'] = valuezzz*17
-		elif measurement == 8:
-			self.stone = level8[rand(len(level8))]
-			config['delay'] = valuezzz*18
-		elif measurement == 9:
-			self.stone = level9[rand(len(level9))]
-			config['delay'] = valuezzz*19
-		else:
-			print ("Please make sure sensors are configured properly!")
 
+
+		
+		
+		self.stone = normal[rand(len(normal))]
+		
 		self.stone_x = int(config['cols'] / 2 - len(self.stone[0])/2)
 		
 		
@@ -1125,20 +1131,291 @@ class TetrisApp(object):
 		self.gameover = False
 		self.paused = False
 		
+		config['delay'] = 50*10
 		pygame.time.set_timer(pygame.USEREVENT+1, config['delay'])
 		dont_burn_my_cpu = pygame.time.Clock()
 		
-		plotted = 0
 		
+		print("relax 60 sec")
+		#this is the relax for 60 sec loop
+		breakss = True
 		exestart = datetime.now()
+		while breakss:
 			
-		while True:
+			dt = datetime.now() - exestart
+			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+			#print( "breaking" + str(ms) )
+			
+			self.screen.fill((36, 115, 54))
+			pygame.display.update()
+			dont_burn_my_cpu.tick(config['maxfps'])
+			
+			
+			exeevery = 60000
+			
+			if ms > exeevery:
+				breakss = False
+					
+				dt = 0.03333333333333333333333333333333333333333333
+				t = np.arange(0, 60, dt)
+					
+				s1_ = np.array(num_array_pupil)
+				s2_ = np.array(num_array_x)
+				s3_ = np.array(num_array_y)
+
+				s4_ = np.array(num_array_gsr)
+				s5_ = np.array(num_array_ppg)					
+				
+				#s4 = signal.filtfilt(b, a, s4)
+				s4 = medfilt(s4_,301)
+				s1 = medfilt(s1_,31)
+				
+				pupil_low_mean = np.mean( s1 )
+				gsr_low_mean = np.mean( s4 )
+				print( "pupil low  mean : " + str( pupil_low_mean ) )
+				print( "gsr   low  mean : " + str( gsr_low_mean ) )
+				
+				"""
+				# Plot the frequency response for a few different orders.
+				plt.figure(0)
+				fig, axs = plt.subplots(4, 1)
+				axs[0].plot(t, s1_)
+				axs[0].set_xlim(0, 60)
+				axs[0].set_xlabel('time')
+				axs[0].set_ylabel('s1')
+				axs[0].grid(True)
+
+				axs[1].plot( t, s2_)
+				axs[1].set_xlim(0, 60)
+				axs[1].set_xlabel('time')
+				axs[1].set_ylabel('s2')
+				axs[1].grid(True)
+
+				axs[2].plot( t, s3_)
+				axs[2].set_xlim(0, 60)
+				axs[2].set_xlabel('time')
+				axs[2].set_ylabel('s3')
+				axs[2].grid(True)
+
+				axs[3].plot( t, s4_)
+				axs[3].set_xlim(0, 60)
+				axs[3].set_xlabel('time')
+				axs[3].set_ylabel('s4')
+				axs[3].grid(True)
+
+				fig.tight_layout()
+
+				plt.figure(1)
+				fig, axs = plt.subplots(4, 1)
+				axs[0].plot(t, s1)
+				axs[0].set_xlim(0, 60)
+				axs[0].set_xlabel('time')
+				axs[0].set_ylabel('s1')
+				axs[0].grid(True)
+
+				axs[1].plot( t, s2_)
+				axs[1].set_xlim(0, 60)
+				axs[1].set_xlabel('time')
+				axs[1].set_ylabel('s2')
+				axs[1].grid(True)
+
+				axs[2].plot( t, s3_)
+				axs[2].set_xlim(0, 60)
+				axs[2].set_xlabel('time')
+				axs[2].set_ylabel('s3')
+				axs[2].grid(True)
+
+				axs[3].plot( t, s4)
+				axs[3].set_xlim(0, 60)
+				axs[3].set_xlabel('time')
+				axs[3].set_ylabel('s4')
+				axs[3].grid(True)
+
+				fig.tight_layout()
+				
+				plt.show()
+				"""
+		
+		
+
+		
+		config['delay'] = 40*1
+		pygame.time.set_timer(pygame.USEREVENT+1, config['delay'])
+		dont_burn_my_cpu = pygame.time.Clock()
+		
+		
+		print("stress 60 sec")
+		#this is the fast tetris play for 10 sec loop
+		wait_here = True 
+		exestart = datetime.now()
+		while wait_here:
 			
 			dt = datetime.now() - exestart
 			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
 			
 			
-			exeevery = 85000 # 60 sec + 5sec so the buffer is for sure not empty in nay spots
+			exeevery = 60000 # 60 sec
+			
+			
+			if ms > exeevery:
+				wait_here = False
+				
+				dt = 0.03333333333333333333333333333333333333333333
+				t = np.arange(0, 60, dt)
+					
+				s1_ = np.array(num_array_pupil)
+				s2_ = np.array(num_array_x)
+				s3_ = np.array(num_array_y)
+
+				s4_ = np.array(num_array_gsr)
+				s5_ = np.array(num_array_ppg)					
+				
+				#s4 = signal.filtfilt(b, a, s4)
+				s4 = medfilt(s4_,301)
+				s1 = medfilt(s1_,31)
+				
+				pupil_high_mean = np.mean( s1 )
+				gsr_high_mean = np.mean( s4 )
+				print( "pupil low  mean : " + str( pupil_high_mean ) )
+				print( "gsr   low  mean : " + str( gsr_high_mean ) )
+
+		
+			self.screen.fill((36, 115, 54))
+			if self.gameover:
+				self.center_msg("""Game Over! Press space to continue""")
+
+			else:
+				if self.paused:
+					self.center_msg("Paused")
+				else:
+					self.draw_matrix(self.board, (0,0))
+					self.draw_matrix(self.stone, (self.stone_x, self.stone_y))
+			pygame.display.update()
+			
+			for event in pygame.event.get():
+				if event.type == pygame.USEREVENT+1:
+					self.drop()
+				elif event.type == pygame.QUIT:
+					self.quit()
+				elif event.type == pygame.KEYDOWN:
+					for key in key_actions:
+						if event.key == eval("pygame.K_" +key):
+							key_actions[key]()
+					
+			dont_burn_my_cpu.tick(config['maxfps'])
+		
+		
+		
+		
+		
+		norm_array_pupil = [0] * n_pupil_size
+		norm_array_gsr = [0] * n_gsr_size
+		
+		
+		
+		
+		config['delay'] = 50*4
+		pygame.time.set_timer(pygame.USEREVENT+1, config['delay'])
+		dont_burn_my_cpu = pygame.time.Clock()		
+		self.board = new_board()
+		self.new_stone()
+		
+		
+		
+		print("game 60 sec")
+		# this is the test loop
+		plotted = 0
+		exestart = datetime.now()
+		while True:
+			
+			
+			
+
+			
+			gsr_array = np.array(num_array_gsr[1500:1799])
+			gsr_qqq = np.median(gsr_array)
+			gsr_norm = (gsr_qqq - gsr_low_mean)/(gsr_high_mean - gsr_low_mean)
+			
+			print("gsr_low_mean: " + str(gsr_low_mean))
+			print("gsr_high_mean: " + str(gsr_high_mean))
+			print("gsr_qqq: " + str(gsr_qqq))
+			print("gsr_norm: " + str(gsr_norm))
+			
+			pupil_array = np.array(num_array_pupil[1769:1799])
+			pupil_qqq = np.median(pupil_array)
+			pupil_norm = (pupil_qqq - pupil_low_mean)/(pupil_high_mean - pupil_low_mean)
+			
+			print("pupil_low_mean: " + str(pupil_low_mean))
+			print("pupil_high_mean: " + str(pupil_high_mean))
+			print("pupil_qqq: " + str(pupil_qqq))
+			print("pupil_norm: " + str(pupil_norm))
+			
+			fused_value = gsr_norm*0.1 + pupil_norm*0.9
+			
+			print("fused value: " + str(pupil_qqq))
+			
+			
+			valuezzz = 50
+
+			
+			if    fused_value < 0.0 :			
+				print("0.0--")
+				config['delay'] = valuezzz*10
+			elif  fused_value > 0 and fused_value < 0.1 :			
+				print("0.1")
+				config['delay'] = valuezzz*10
+			elif  fused_value > 0.1 and fused_value < 0.2 :
+				print("0.2")
+				config['delay'] = valuezzz*9
+			elif  fused_value > 0.2 and fused_value < 0.3 :
+				print("0.3")
+				config['delay'] = valuezzz*8
+			elif  fused_value > 0.3 and fused_value < 0.4 :
+				print("0.4")
+				config['delay'] = valuezzz*7
+			elif  fused_value > 0.4 and fused_value < 0.5 :
+				print("0.5")
+				config['delay'] = valuezzz*6
+			elif  fused_value > 0.5 and fused_value < 0.6 :
+				print("0.6")
+				config['delay'] = valuezzz*5
+			elif  fused_value > 0.6 and fused_value < 0.7 :
+				print("0.7")
+				config['delay'] = valuezzz*4
+			elif  fused_value > 0.7 and fused_value < 0.8 :
+				print("0.8")
+				config['delay'] = valuezzz*3
+			elif  fused_value > 0.8 and fused_value < 0.9 :
+				print("0.9")
+				config['delay'] = valuezzz*2
+			elif  fused_value > 0.9 and fused_value < 1.0 :
+				print("1.0")
+				config['delay'] = valuezzz*1
+			elif  fused_value > 1.0 :
+				print("1.0++")
+				config['delay'] = valuezzz*1
+			else:
+
+				print ("Please")
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			#measurement = 4
+			
+			pygame.time.set_timer(pygame.USEREVENT+1, config['delay'])
+			
+			dt = datetime.now() - exestart
+			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+			
+			
+			exeevery = 60000 # 60 sec + 5sec so the buffer is for sure not empty in nay spots
 			
 			
 			if ms > exeevery:
@@ -1286,36 +1563,60 @@ class TetrisApp(object):
 					w = fc / (fs / 2) # Normalize the frequency
 					b, a = signal.butter(order, w, 'low')
 					
+					
+					
+					
 					#s4 = signal.filtfilt(b, a, s4)
-					s4 = medfilt(s4,301)
-					s1 = medfilt(s1,301)
+					
+					
 
 					# Plot the frequency response for a few different orders.
 					plt.figure(2)
-					fig, axs = plt.subplots(4, 1)
+					fig, axs = plt.subplots(6, 1)
 					axs[0].plot(t, s1)
 					axs[0].set_xlim(0, 60)
 					axs[0].set_xlabel('time')
-					axs[0].set_ylabel('s1')
+					axs[0].set_ylabel('Raw pupil')
 					axs[0].grid(True)
+					
+					s1_30 = medfilt(s1,31)
 
-					axs[1].plot( t, s2)
+					axs[1].plot( t, s1_30)
 					axs[1].set_xlim(0, 60)
 					axs[1].set_xlabel('time')
-					axs[1].set_ylabel('s2')
+					axs[1].set_ylabel('Filtered 30 pupil')
 					axs[1].grid(True)
+					
+					s1_300 = medfilt(s1,301)
 
-					axs[2].plot( t, s3)
+					axs[2].plot( t, s1_300)
 					axs[2].set_xlim(0, 60)
 					axs[2].set_xlabel('time')
-					axs[2].set_ylabel('s3')
-					axs[2].grid(True)
+					axs[2].set_ylabel('Filtered 300 pupil')
+					axs[2].grid(True)					
+					
 
-					axs[3].plot( t, s4)
+					axs[3].plot(t, s4)
 					axs[3].set_xlim(0, 60)
 					axs[3].set_xlabel('time')
-					axs[3].set_ylabel('s4')
+					axs[3].set_ylabel('Raw GSR')
 					axs[3].grid(True)
+					
+					s4_30 = medfilt(s4,31)
+
+					axs[4].plot( t, s4_30)
+					axs[4].set_xlim(0, 60)
+					axs[4].set_xlabel('time')
+					axs[4].set_ylabel('Filtered 30 GSR')
+					axs[4].grid(True)
+					
+					s4_300 = medfilt(s4,301)
+
+					axs[5].plot( t, s4_300)
+					axs[5].set_xlim(0, 60)
+					axs[5].set_xlabel('time')
+					axs[5].set_ylabel('Filtered 300 GSR')
+					axs[5].grid(True)
 
 					
 					fig.tight_layout()
@@ -1325,7 +1626,7 @@ class TetrisApp(object):
 					
 					plt.show()
 		
-			self.screen.fill((142, 214, 159))
+			self.screen.fill((36, 115, 54))
 			if self.gameover:
 				self.center_msg("""Game Over! Press space to continue""")
 
