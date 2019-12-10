@@ -532,11 +532,11 @@ import pygame, sys
 
 # The configuration
 config = {
-	'cell_size':	20,
-	'cols':		16,
-	'rows':		32,
+	'cell_size': 54, #20,
+	'cols':		 96, #10,
+	'rows':		20,
 	'delay':	50,
-	'maxfps':	60
+	'maxfps':	30
 }
 
 colors = [
@@ -1135,6 +1135,167 @@ class TetrisApp(object):
 		pygame.time.set_timer(pygame.USEREVENT+1, config['delay'])
 		dont_burn_my_cpu = pygame.time.Clock()
 		
+
+
+
+		print("color 30 sec")
+		#this is the relax for 60 sec loop
+		breakss = True
+		exestart = datetime.now()
+		while breakss:
+			
+			dt = datetime.now() - exestart
+			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+			#print( "breaking" + str(ms) )
+			
+			self.screen.fill((50, 50, 50))
+			pygame.display.update()
+			dont_burn_my_cpu.tick(config['maxfps'])
+			
+			
+			exeevery = 10000
+			
+			if ms > exeevery:
+				breakss = False
+
+
+
+
+
+		print("color 30 sec")
+		#this is the relax for 60 sec loop
+		breakss = True
+		exestart = datetime.now()
+		while breakss:
+			
+			dt = datetime.now() - exestart
+			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+			#print( "breaking" + str(ms) )
+			
+			self.screen.fill((15, 91, 130))
+			pygame.display.update()
+			dont_burn_my_cpu.tick(config['maxfps'])
+			
+			
+			exeevery = 30000
+			
+			if ms > exeevery:
+				breakss = False
+					
+
+
+
+
+		print("color 30 sec")
+		#this is the relax for 60 sec loop
+		breakss = True
+		exestart = datetime.now()
+		while breakss:
+			
+			dt = datetime.now() - exestart
+			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
+			#print( "breaking" + str(ms) )
+			
+			self.screen.fill((36, 115, 54))
+			pygame.display.update()
+			dont_burn_my_cpu.tick(config['maxfps'])
+			
+			
+			exeevery = 30000
+			
+			if ms > exeevery:
+				breakss = False
+					
+				dt = 0.03333333333333333333333333333333333333333333
+				t = np.arange(0, 60, dt)
+					
+				s1 = np.array(num_array_pupil)
+					
+				
+				mean_blue_array = np.array(num_array_pupil[0:899])
+				mean_green_array = np.array(num_array_pupil[900:1799])
+				
+				mean_blue = np.mean(mean_blue_array)
+				mean_green = np.mean(mean_green_array)
+
+				print( "pupil blue   mean : " + str( mean_blue ) )
+				print( "pupil green  mean : " + str( mean_green ) )
+				
+
+				# Plot the frequency response for a few different orders.
+				plt.figure(2)
+				fig, axs = plt.subplots(3, 1)
+				axs[0].plot(t, s1)
+				axs[0].set_xlim(0, 60)
+				axs[0].set_xlabel('time')
+				axs[0].set_ylabel('Raw pupil')
+				axs[0].grid(True)
+				
+				s1_30 = medfilt(s1,31)
+
+				axs[1].plot( t, s1_30)
+				axs[1].set_xlim(0, 60)
+				axs[1].set_xlabel('time')
+				axs[1].set_ylabel('Filtered 30 pupil')
+				axs[1].grid(True)
+				
+				s1_300 = medfilt(s1,301)
+
+				axs[2].plot( t, s1_300)
+				axs[2].set_xlim(0, 60)
+				axs[2].set_xlabel('time')
+				axs[2].set_ylabel('Filtered 300 pupil')
+				axs[2].grid(True)
+				
+				fig.tight_layout()
+				
+				plt.show()
+				
+
+		
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		
 		print("relax 60 sec")
 		#this is the relax for 60 sec loop
@@ -1357,7 +1518,7 @@ class TetrisApp(object):
 			
 			valuezzz = 50
 
-			
+			# change the speed of the game based uppon the fused value 
 			if    fused_value < 0.0 :			
 				print("0.0--")
 				config['delay'] = valuezzz*10
