@@ -87,6 +87,8 @@ num_array_gsr = [0] * n_gsr_size
 norm_array_gsr = [0] * n_gsr_size
 num_array_ppg = [0] * n_gsr_size
 
+fused_signal_buffer = [0] * n_gsr_size
+
 def thread_gsr_function():
 	print("start gsr")
 	
@@ -200,7 +202,8 @@ def thread_gsr_function():
 			gsr_normt = (gsr_qqqt - gsr_low_mean)/(gsr_high_mean - gsr_low_mean)
 			
 			norm_array_gsr.pop(0)
-			norm_array_gsr.insert(len(norm_array_gsr), gsr_normt)		
+			norm_array_gsr.insert(len(norm_array_gsr), gsr_normt)	
+
 			
 			
 		#N = 5000
@@ -532,8 +535,8 @@ import pygame, sys
 
 # The configuration
 config = {
-	'cell_size': 54, #20,
-	'cols':		 96, #10,
+	'cell_size': 20,
+	'cols':		 10,
 	'rows':		20,
 	'delay':	50,
 	'maxfps':	30
@@ -1138,162 +1141,6 @@ class TetrisApp(object):
 
 
 
-		print("color 30 sec")
-		#this is the relax for 60 sec loop
-		breakss = True
-		exestart = datetime.now()
-		while breakss:
-			
-			dt = datetime.now() - exestart
-			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
-			#print( "breaking" + str(ms) )
-			
-			self.screen.fill((50, 50, 50))
-			pygame.display.update()
-			dont_burn_my_cpu.tick(config['maxfps'])
-			
-			
-			exeevery = 10000
-			
-			if ms > exeevery:
-				breakss = False
-
-
-
-
-
-		print("color 30 sec")
-		#this is the relax for 60 sec loop
-		breakss = True
-		exestart = datetime.now()
-		while breakss:
-			
-			dt = datetime.now() - exestart
-			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
-			#print( "breaking" + str(ms) )
-			
-			self.screen.fill((15, 91, 130))
-			pygame.display.update()
-			dont_burn_my_cpu.tick(config['maxfps'])
-			
-			
-			exeevery = 30000
-			
-			if ms > exeevery:
-				breakss = False
-					
-
-
-
-
-		print("color 30 sec")
-		#this is the relax for 60 sec loop
-		breakss = True
-		exestart = datetime.now()
-		while breakss:
-			
-			dt = datetime.now() - exestart
-			ms = (dt.days * 24 * 60 * 60 + dt.seconds) * 1000 + dt.microseconds / 1000.0
-			#print( "breaking" + str(ms) )
-			
-			self.screen.fill((36, 115, 54))
-			pygame.display.update()
-			dont_burn_my_cpu.tick(config['maxfps'])
-			
-			
-			exeevery = 30000
-			
-			if ms > exeevery:
-				breakss = False
-					
-				dt = 0.03333333333333333333333333333333333333333333
-				t = np.arange(0, 60, dt)
-					
-				s1 = np.array(num_array_pupil)
-					
-				
-				mean_blue_array = np.array(num_array_pupil[0:899])
-				mean_green_array = np.array(num_array_pupil[900:1799])
-				
-				mean_blue = np.mean(mean_blue_array)
-				mean_green = np.mean(mean_green_array)
-
-				print( "pupil blue   mean : " + str( mean_blue ) )
-				print( "pupil green  mean : " + str( mean_green ) )
-				
-
-				# Plot the frequency response for a few different orders.
-				plt.figure(2)
-				fig, axs = plt.subplots(3, 1)
-				axs[0].plot(t, s1)
-				axs[0].set_xlim(0, 60)
-				axs[0].set_xlabel('time')
-				axs[0].set_ylabel('Raw pupil')
-				axs[0].grid(True)
-				
-				s1_30 = medfilt(s1,31)
-
-				axs[1].plot( t, s1_30)
-				axs[1].set_xlim(0, 60)
-				axs[1].set_xlabel('time')
-				axs[1].set_ylabel('Filtered 30 pupil')
-				axs[1].grid(True)
-				
-				s1_300 = medfilt(s1,301)
-
-				axs[2].plot( t, s1_300)
-				axs[2].set_xlim(0, 60)
-				axs[2].set_xlabel('time')
-				axs[2].set_ylabel('Filtered 300 pupil')
-				axs[2].grid(True)
-				
-				fig.tight_layout()
-				
-				plt.show()
-				
-
-		
-		
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 		
@@ -1331,10 +1178,10 @@ class TetrisApp(object):
 				s4 = medfilt(s4_,301)
 				s1 = medfilt(s1_,31)
 				
-				pupil_low_mean = np.mean( s1 )
-				gsr_low_mean = np.mean( s4 )
-				print( "pupil low  mean : " + str( pupil_low_mean ) )
-				print( "gsr   low  mean : " + str( gsr_low_mean ) )
+				pupil_low_mean = np.min( s1 )
+				gsr_low_mean = np.min( s4 )
+				print( "pupil low  min : " + str( pupil_low_mean ) )
+				print( "gsr   low  min : " + str( gsr_low_mean ) )
 				
 				"""
 				# Plot the frequency response for a few different orders.
@@ -1435,10 +1282,10 @@ class TetrisApp(object):
 				s4 = medfilt(s4_,301)
 				s1 = medfilt(s1_,31)
 				
-				pupil_high_mean = np.mean( s1 )
-				gsr_high_mean = np.mean( s4 )
-				print( "pupil low  mean : " + str( pupil_high_mean ) )
-				print( "gsr   low  mean : " + str( gsr_high_mean ) )
+				pupil_high_mean = np.max( s1 )
+				gsr_high_mean = np.max( s4 )
+				print( "pupil low  max : " + str( pupil_high_mean ) )
+				print( "gsr   low  max : " + str( gsr_high_mean ) )
 
 		
 			self.screen.fill((36, 115, 54))
@@ -1497,6 +1344,11 @@ class TetrisApp(object):
 			gsr_qqq = np.median(gsr_array)
 			gsr_norm = (gsr_qqq - gsr_low_mean)/(gsr_high_mean - gsr_low_mean)
 			
+			if gsr_norm < 0:
+				gsr_norm = 0
+			if gsr_norm > 1:
+				gsr_norm = 1
+			
 			print("gsr_low_mean: " + str(gsr_low_mean))
 			print("gsr_high_mean: " + str(gsr_high_mean))
 			print("gsr_qqq: " + str(gsr_qqq))
@@ -1505,15 +1357,21 @@ class TetrisApp(object):
 			pupil_array = np.array(num_array_pupil[1769:1799])
 			pupil_qqq = np.median(pupil_array)
 			pupil_norm = (pupil_qqq - pupil_low_mean)/(pupil_high_mean - pupil_low_mean)
+			if pupil_norm < 0:
+				pupil_norm = 0
+			if pupil_norm > 1:
+				pupil_norm = 1
 			
 			print("pupil_low_mean: " + str(pupil_low_mean))
 			print("pupil_high_mean: " + str(pupil_high_mean))
 			print("pupil_qqq: " + str(pupil_qqq))
 			print("pupil_norm: " + str(pupil_norm))
 			
+
+			
 			fused_value = gsr_norm*0.1 + pupil_norm*0.9
 			
-			print("fused value: " + str(pupil_qqq))
+			print("fused value: " + str(fused_value))
 			
 			
 			valuezzz = 50
